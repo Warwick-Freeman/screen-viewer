@@ -46,8 +46,21 @@ async function getVideoSources() {
 
 // Get the video stream from the list of sources - also async and returns a promise
 async function getVideoStream() {
-  
-  const sourceId = inputSources[0].id;
+
+  let i = 0;
+
+  for (i = 0; i < inputSources.length ;i++) {
+
+    let winProg = inputSources[i].name.slice(0,13);
+    if (winProg == 'ProFusion EEG') {
+      break;
+    }
+  }
+
+  if (i == inputSources.length)
+    i = 0;
+
+  const sourceId = inputSources[i].id;
  
   const stream = await navigator.mediaDevices.getUserMedia(
     {
