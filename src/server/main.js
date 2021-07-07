@@ -9,7 +9,7 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 
 // Handler for remote messages - these are to reflect mouse and keyboard events from the remote end
 function remote(data) {
-  console.log('data:', data)
+  console.log('remote data:', data);
 }
 
 // create the express server to serve the client to the remote desktop browser 
@@ -23,7 +23,7 @@ const io = new Server(httpServer);
 
 
 // default our server to port 8888
-const port = process.env.NODE_PORT || 8888
+const port = process.env.NODE_PORT || 8888;
 
 // the web page is the client application
 expressApp.use(express.static(path.join(__dirname, '../client')));
@@ -52,11 +52,13 @@ function handleConnection(socket) {
 }
 
 const createWindow = () => {
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: true,
         contextIsolation: false,
         enableRemoteModule: true

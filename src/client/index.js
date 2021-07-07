@@ -1,11 +1,16 @@
+// Client side code for the screen sharing
+
+// socket endpoint
 const socketEndpoint = '/';
 
+// ice server configuration for the webRTC negotiation
 const pcConfig = {
   iceServers: [{
     url: 'stun:stun.l.google.com:19302'
   }]
 };
 
+// Generate a unique string to identify this client (peer)
 function uuid() {
   let d = new Date().getTime();
   
@@ -20,6 +25,7 @@ function uuid() {
   });
 }
 
+// simplified logging to the console
 function log(statement = '', variable = '') {
   console.log(statement, variable)
 }
@@ -27,8 +33,6 @@ function log(statement = '', variable = '') {
 // return the connected socket
 var socket = io()
 socket.on('connect', () => { console.log(socket.id) })
-
-//socket.connect(socketEndpoint)
 
 // Peer functions
 // This is our peer object and stores things 
@@ -43,11 +47,12 @@ const peer  = {
       video: document.querySelector('#remote-video')
     }
   }
-  
+
+  // A message from the server end of the connection
   function onMessage(message) {
     log("onMessage", message);
   
-    // Is the peer started
+    // Is the peer started - if not start it
     if (peer.isStarted == false) {
       startPeerConnections();
     }
@@ -90,18 +95,11 @@ const peer  = {
     }
   }
   
-  function handleAudioStateChange(event) {
-    log('Audio state change')  
-  }
-
+  // functions to handle change events for the webRTC connection
   function handleVideoStateChange(event) {
       log('iceConnectionState:', peer.connections.video.iceConnectionState)
   }
   
-  function handleAudioIceCandidate(iceCandidate) {
-    handleIceCandidate(iceCandidate, 'audio')
-  }
-
   function handleVideoIceCandidate(iceCandidate) {
     handleIceCandidate(iceCandidate, 'video')
   }
@@ -120,19 +118,9 @@ const peer  = {
     log('Done sending candidates')
   }
   
-  function handleAudioTrackAdded(event) {
-    log('added audio stream')
-    peer.elements.audio.srcObject = event.streams[0]
-  }
-  
   function handleVideoTrackAdded(event) {
     log('added video stream')
     peer.elements.video.srcObject = event.streams[0]
-  }
-  
-  function handleAudioRemoveTrack(event) {
-    log('Removed audio stream')
-    peer.elements.audio.srcObject = null
   }
   
   function handleVideoRemoveTrack(event) {
@@ -169,9 +157,91 @@ const peer  = {
     sendMessage({type:'leave', clientId: peer.clientId})
   }
 
-  
+  // Event functions.  These track the mouse and other movements in the shared screen and send them
+  // to the remote end to allow for control
+  function sendEvent(type, data) {
+    log('rtc-event', type, data);
+    socket.emit('rtc-event', {type, data})
+}
+
+let width;
+let height;
+
+function MouseMoveEvent(event) {
+    sendEvent('mousemove', {
+        canvasHeight: height,
+        canvasWidth: width,
+        toggle: false,
+        x: event.pageX - event.target.offsetLeft,
+    })
+}
+
+function MouseDownEvent(event) {
+    sendEvent('mousedown', {
+        canvasHeight: height,
+        canvasWidth: width,
+        toggle: 'down',
+        x: event.pageX - event.target.offsetLeft,
+    })
+}
+
+function MouseUpEvent(event) {
+    sendEvent('mouseup', {
+        canvasHeight: height,
+        canvasWidth: width,
+        toggle: 'up',
+        x: event.pageX - event.target.offsetLeft,
+    })
+}
+
+function KeyboardEvent(event) {
+    sendEvent('keydown', {
+        keyCode: event.keyCode,
+        shiftKey: event.shiftKey,
+        metaKey: event.metaKey,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey
+    })
+}
+
+function WheelEvent(event) {
+    sendEvent('wheel', {
+        deltaX: event.deltaX,
+        deltaY: event.deltaY
+    })
+}
+
+function ClickEvent(event) {
+    sendEvent('click', {
+        which: event.which,
+        double: false
+    })
+}
+
+function DblClickEvent(event) {
+    sendEvent('dblclick', {
+        which: event.which,
+        double: true
+    })
+}
+
+function addEvents() {
+
+    canvas = document.querySelector('#capture');
+    const rect = canvas.getBoundingClientRect();
+    width = rect.width
+    height = rect.height
+ 
+    canvas.addEventListener('mousemove', MouseMoveEvent, false);
+    canvas.addEventListener('mousedown', MouseDownEvent, false);
+    canvas.addEventListener('mouseup', MouseUpEvent, false);
+    canvas.addEventListener('keydown', KeyboardEvent, false);
+    canvas.addEventListener('wheel', WheelEvent, false);
+    canvas.addEventListener('click', ClickEvent, false);
+    canvas.addEventListener('dblclick', DblClickEvent, false);
+}
 
 // Setup the sock and then connect and add the event listeners
 socket.on('rtc-message', onMessage)
 connect()
-//addEvents()
+addEvents()
